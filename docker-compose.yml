@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------
+  # 1. Mosquitto (Broker MQTT)
+  # Recebe telemetria dos ESP32 e publica para subscritores
+  # ----------------------------------------------------
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: iot_mosquitto
+    restart: always
+    ports:
+      - "1883:1883" # Porta MQTT padrão
+      - "9001:9001" # WebSockets (opcional)
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - iot_net
+
+  # ----------------------------------------------------
+  # 2. Prometheus (Base de Dados de Séries Temporais)
+  # Armazena métricas recolhidas do backend e exportadores
+  # ----------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: iot_prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - iot_net
+
+  # ----------------------------------------------------
+  # 3. Grafana (Visualização)
+  # Dashboards para monitorizar o sistema
+  # ----------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: iot_grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_ SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - iot_net
+
+  # ----------------------------------------------------
+  # 4. MQTT Exporter (Ponte MQTT -> Prometheus)
+  # Opcional: converte mensagens MQTT em métricas Prometheus
+  # Nota: Vamos configurar este serviço numa fase posterior
+  # ou usar um script Python 'custom' nos simuladores.
+  # ----------------------------------------------------
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  iot_net:
+    driver: bridge
