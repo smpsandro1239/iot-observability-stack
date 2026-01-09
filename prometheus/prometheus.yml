@@ -2,10 +2,35 @@ global:
   scrape_interval: 10s # Recolher métricas a cada 10 segundos
   scrape_timeout: 5s
 
+rule_files:
+  - "iot-alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  - job_name: 'mqtt_exporter'
+    static_configs:
+      - targets: ['mqtt-exporter:9000']
+
+  # Scrape do Backend Laravel Real
+  - job_name: 'laravel_backend'
+    metrics_path: '/api/v1/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+
+  # Scrape do Simulador de métricas estilo Laravel
+  - job_name: 'laravel_mock'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
 
   # Exemplo de job para o Backend Laravel (quando estiver configurado)
   # - job_name: 'laravel_backend'

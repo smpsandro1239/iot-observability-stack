@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # ----------------------------------------------------
@@ -31,6 +30,7 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts/iot-alerts.yml:/etc/prometheus/iot-alerts.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -63,10 +63,38 @@ services:
 
   # ----------------------------------------------------
   # 4. MQTT Exporter (Ponte MQTT -> Prometheus)
-  # Opcional: converte mensagens MQTT em métricas Prometheus
-  # Nota: Vamos configurar este serviço numa fase posterior
-  # ou usar um script Python 'custom' nos simuladores.
+  # Converte mensagens JSON do MQTT em métricas Prometheus
   # ----------------------------------------------------
+  mqtt-exporter:
+    image: kpetrem/mqtt-exporter:latest
+    container_name: iot_mqtt_exporter
+    restart: always
+    environment:
+      - MQTT_ADDRESS=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=iot/telemetry
+      # O exporter vai procurar campos como 'rssi', 'battery', etc no JSON
+      - MQTT_KEEPALIVE=60
+      - PROMETHEUS_PREFIX=iot_
+    depends_on:
+      - mosquitto
+    networks:
+      - iot_net
+
+  # ----------------------------------------------------
+  # 5. Alertmanager (Gestão de Alertas)
+  # Envia notificações (Telegram, Email, etc)
+  # ----------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: iot_alertmanager
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alerts/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - iot_net
 
 volumes:
   prometheus_data:

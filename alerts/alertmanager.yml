@@ -1,0 +1,14 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 3h
+  receiver: 'log_receiver'
+
+receivers:
+- name: 'log_receiver'
+  # Aqui configurar-se-ia o Telegram ou Email.
+  # Por agora, os alertas ficam visíveis no painel do Alertmanager e Grafana.

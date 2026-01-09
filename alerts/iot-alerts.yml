@@ -1,10 +1,43 @@
 groups:
-- name: iot_alerts
+- name: iot_industrial_alerts
   rules:
-  - alert: DeviceOffline
-    expr: up == 0
+  # 1. Alerta de Dispositivo Offline
+  # Se não houver dados de uptime nos últimos 30 segundos
+  - alert: ESP32_Offline
+    expr: absent_over_time(iot_uptime[30s])
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Dispositivo IoT Offline"
+      description: "O dispositivo parou de enviar telemetria via LoRa/MQTT."
+
+  # 2. Sinal LoRa Crítico (RSSI)
+  - alert: LoRa_Signal_Critical
+    expr: iot_rssi < -95
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Sinal LoRa Instável"
+      description: "O sinal do dispositivo está muito baixo ({{ $value }} dBm), risco de perda de pacotes."
+
+  # 3. Bateria Baixa (Abaixo de 3.5V)
+  - alert: Battery_Low
+    expr: iot_battery < 3.5
     for: 5m
     labels:
       severity: critical
     annotations:
-      summary: "Dispositivo {{ $labels.instance }} está offline"
+      summary: "Bateria Crítica"
+      description: "A bateria do dispositivo está a {{ $value }}V. Requer substituição ou carregamento."
+
+  # 4. Backend Laravel Offline
+  - alert: Laravel_Backend_Down
+    expr: up{job="laravel_backend"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Backend Laravel Offline"
+      description: "O Prometheus não consegue ligar ao endpoint /api/v1/prometheus."
