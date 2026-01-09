@@ -6,9 +6,21 @@ route:
   group_wait: 10s
   group_interval: 5m
   repeat_interval: 3h
-  receiver: 'log_receiver'
+  receiver: 'telegram_alerts'
 
 receivers:
-- name: 'log_receiver'
-  # Aqui configurar-se-ia o Telegram ou Email.
-  # Por agora, os alertas ficam visíveis no painel do Alertmanager e Grafana.
+- name: 'telegram_alerts'
+  telegram_configs:
+  - bot_token: 'COLOQUE_AQUI_O_SEU_TOKEN_DO_BOT'
+    api_url: 'https://api.telegram.org'
+    chat_id: 000000000 # COLOQUE_AQUI_O_SEU_CHAT_ID_DO_UTILIZADOR
+    parse_mode: 'HTML'
+    message: |
+      <b>🔔 ALERTA IOT: {{ .Status | toUpper }}</b>
+      {{ range .Alerts }}
+      <b>Serviço:</b> {{ .Labels.alertname }}
+      <b>Resumo:</b> {{ .Annotations.summary }}
+      <b>Descrição:</b> {{ .Annotations.description }}
+      <b>Severidade:</b> {{ .Labels.severity | toUpper }}
+      <b>Hora:</b> {{ .StartsAt.Format "15:04:05" }}
+      {{ end }}
